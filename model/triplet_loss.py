@@ -116,7 +116,7 @@ def _get_a_n_mask(labels):
 
     return mask_a_n
 
-def batch_hard_triplet_loss(features, labels, squared):
+def batch_hard_triplet_loss(features, labels, margin, squared):
 
     # Hardest positive distance -- largest positive distance
     distance = _pairwise_distance(features, squared)

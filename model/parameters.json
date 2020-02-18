@@ -11,7 +11,7 @@
   "triplet_strategy": "batch_all",
   "squared": false,
 
-  "image_size": 28,
+  "image_size": 64,
   "num_labels": 10,
   "train_size": 50000,
   "eval_size": 10000,
