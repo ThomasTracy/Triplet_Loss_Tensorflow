@@ -50,13 +50,13 @@ def preprocess(image, label):
 
     return img, label
 
-def build_dataset():
+def build_dataset(params):
     images, labels = load_traffic_signs('D:\Data\GTSRB\Final_Training\Images_jpg\\train.txt')
 
     dataset = tf.data.Dataset.from_tensor_slices((images, labels))
-    dataset = dataset.shuffle(50000, reshuffle_each_iteration=True)
+    dataset = dataset.shuffle(params.train_size, reshuffle_each_iteration=True)
     dataset = dataset.map(preprocess)
-    dataset = dataset.batch(64, drop_remainder=True) # Make sure all batch are 64, divided evenly
+    dataset = dataset.batch(params.batch_size, drop_remainder=True) # Make sure all batch are 64, divided evenly
     dataset = dataset.repeat(3)
     dataset = dataset.prefetch(1)
 

@@ -3,8 +3,6 @@ import json
 import time
 import logging
 
-from utils.data_utils import test
-
 
 class Params():
     """

@@ -94,7 +94,7 @@ def batch_all_triplet_loss(features, labels, margin, squared):
     fraction_positive_triplets = num_positive_triplets / (num_valid_triplets + 1e-16)
 
     # Mean triplet loss over positive triplets
-    triplet_loss = triplet_loss / (num_positive_triplets + 1e-16)
+    triplet_loss = tf.reduce_sum(triplet_loss) / (num_positive_triplets + 1e-16)
 
     return triplet_loss, fraction_positive_triplets
 
