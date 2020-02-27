@@ -2,6 +2,9 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import cv2
 import numpy
+import os
+
+from utils.train_utils import Params
 
 
 IMG_SIZE = 64
@@ -50,8 +53,35 @@ def preprocess(image, label):
 
     return img, label
 
-def build_dataset(params):
-    images, labels = load_traffic_signs('D:\Data\GTSRB\Final_Training\Images_jpg\\train.txt')
+
+def build_ref_dataset(ref_dir):
+    images = []
+    labels = []
+    ref_list =  os.listdir(ref_dir)
+    ref_list.sort(key=lambda x: int(x.split('.')[0]))
+    for ref in ref_list:
+        if ref.endswith('.jpg'):
+            label = ref.strip().split('.')[0]
+            labels.append(int(label))
+            image = os.path.join(ref_dir, ref)
+            images.append(image)
+
+    data_size = len(labels)
+    dataset_ref = tf.data.Dataset.from_tensor_slices((images, labels))
+    # dataset_ref = dataset_ref.shuffle(data_size)
+    dataset_ref = dataset_ref.map(preprocess)
+    # hear repeat is important, otherwise it will end in 1 step
+    dataset_ref = dataset_ref.repeat(99999)
+    dataset_ref = dataset_ref.batch(data_size)
+
+    return dataset_ref
+
+
+def train_input_fn(params):
+    # Return is not Dataset class
+    # instead is image, label
+    # the last 51-dims of batch-dim are references
+    images, labels = load_traffic_signs(params.train_txt)
 
     dataset = tf.data.Dataset.from_tensor_slices((images, labels))
     dataset = dataset.shuffle(params.train_size, reshuffle_each_iteration=True)
@@ -60,31 +90,43 @@ def build_dataset(params):
     dataset = dataset.repeat(3)
     dataset = dataset.prefetch(1)
 
-    return dataset
+    dataset_ref = build_ref_dataset(params.references_dir)
 
-def show_dataset(dataset):
+    iterator = dataset.make_one_shot_iterator()
+    iterator_ref = dataset_ref.make_one_shot_iterator()
+    imgs, lbls = iterator.get_next()
+    img_ref, lbl_ref = iterator_ref.get_next()
+    imgs = tf.concat([imgs, img_ref], axis=0)
+    lbls = tf.concat([lbls, lbl_ref], axis=0)
+
+    return imgs, lbls
+
+
+def show_dataset(img, label):
     """
     Use class Iterator to get each
     elements in Dataset
     """
-    iterator = dataset.make_one_shot_iterator()
+    # iterator = dataset.make_one_shot_iterator()
     with tf.Session() as sess:
-        img, label = sess.run(iterator.get_next())
+        img, label = sess.run([img, label])
 
-    for i in range(10):
-        ax =plt.subplot(2,5,i+1)
+    for i in range(115):
+        ax =plt.subplot(10,12,i+1)
         ax.imshow(img[i])
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title(label[i])
 
     plt.show()
+    print(img.shape)
 
 
 if __name__ == '__main__':
-    dataset = build_dataset()
+    params = Params('../model/parameters.json')
+    imgs, labels = build_dataset(params)
 
-    show_dataset(dataset)
+    show_dataset(imgs, labels)
 
 
     # iterator = dataset.make_one_shot_iterator()

@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Conv2D, BatchNormalization, \
     MaxPool2D, Dense, Flatten, ReLU
 
-from model.triplet_loss import batch_all_triplet_loss, batch_hard_triplet_loss
+from model.triplet_loss import batch_all_triplet_loss, batch_hard_triplet_loss, batch_all_center_triplet_loss
 from utils.train_utils import Params
 
 def build_model(params):
@@ -49,39 +49,68 @@ def model_fn(features, labels, mode, params):
     assert images.shape[1:] == [params.image_size, params.image_size, 3], 'Wrong image size {}'.format(images.shape())
 
     # -----------------------------------------
-    #          Define model's structure
+    #         Define model's structure
     # -----------------------------------------
+
     with tf.variable_scope('model'):
         feature_extractor = build_model(params)
         features = feature_extractor(images)
+
+    # if params.finetune:
+    #     assert tf.gfile.IsDirectory(params.finetune_path),\
+    #         "{} is not valid path".format(params.finetune_path)
+    #     checkpoint_path = tf.train.latest_checkpoint(params.finetune_path)
+    #     train_vars = tf.trainable_variables()
+    #     assignment_map, _ =
+    #     tf.train.init_from_checkpoint(
+    #         ckpt_dir_or_file=checkpoint_path,
+    #         assignment_map=
+    #     )
+
     # 2-Norm, Frobenius norm of matrix
     features_mean_norm = tf.reduce_mean(tf.norm(features, axis=1))
     tf.summary.scalar('features_mean_norm', features_mean_norm)
 
     labels = tf.cast(labels, tf.int32)
+    labels_batch = labels[:params.batch_size]
 
-    # -----------------------------------------
-    #           Define triplet loss
-    # -----------------------------------------
+    # --------------------------------------------
+    #           Define loss and predictions
+    # --------------------------------------------
     if params.triplet_strategy == 'batch_all':
-        loss, frac = batch_all_triplet_loss(features, labels, params.margin, params.squared)
+        loss, distance = batch_all_center_triplet_loss(features, labels, params)
+        # loss, frac = batch_all_triplet_loss(features, labels, params.margin, params.squared)
     elif params.triplet_strategy == 'batch_hard':
         loss = batch_hard_triplet_loss(features, labels, params.margin, params.squared)
     else:
         raise ValueError("Don't exist such kind of tiplet loss: {}".format(params.triplet_strategy))
+    predict_label = tf.argmin(distance, axis=1)
 
+    accuracy = tf.equal(tf.squeeze(tf.cast(predict_label, tf.float32)),
+                        tf.squeeze(tf.cast(labels_batch, tf.float32)))
+    accuracy = tf.reduce_sum(tf.cast(accuracy, tf.float32)) / params.batch_size
+    logging_hook = tf.train.LoggingTensorHook(
+        {"loss": loss, "accuracy": accuracy},
+        every_n_iter=100
+    )
+    # accuracy = tf.metrics.accuracy(labels=labels, predictions=predict_label, name='acc_op')
     # -----------------------------------------
     #         Define metrics and summary
     # -----------------------------------------
     with tf.variable_scope('metrics'):
-        eval_metrics_ops = {'feature_mean_norm': tf.metrics.mean(features_mean_norm)}
+        eval_metrics_ops = {
+            'feature_mean_norm': tf.metrics.mean(features_mean_norm),
+            'accuracy': tf.metrics.accuracy(labels=labels_batch,
+                                            predictions=predict_label, name='acc_op')
+        }
 
-        if params.triplet_strategy =='batch_all':
-            eval_metrics_ops['fraction_positive_triplets'] = tf.metrics.mean(frac)
+        # if params.triplet_strategy =='batch_all':
+        #     eval_metrics_ops['fraction_positive_triplets'] = tf.metrics.mean(frac)
 
     tf.summary.scalar('loss', loss)
-    if params.triplet_strategy == 'batch_all':
-        tf.summary.scalar('fraction_positive_triplets', frac)
+    # tf.summary.scalar('accuracy', accuracy[1])
+    # if params.triplet_strategy == 'batch_all':
+    #     tf.summary.scalar('fraction_positive_triplets', frac)
     tf.summary.image('train_image', images, max_outputs=1)
 
     # -----------------------------------------
@@ -89,11 +118,14 @@ def model_fn(features, labels, mode, params):
     # -----------------------------------------
     # 预测值为feature，至于该feature属于哪一类别需要后期处理
     if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = {'features', features}
+        # predictions = {'features': features}
+        predictions = {
+            'predict_labels': predict_label
+        }
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     if mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metrics_ops=eval_metrics_ops)
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metrics_ops)
 
     optimizer = tf.train.AdamOptimizer(params.learning_rate)
     global_step = tf.train.get_global_step()
@@ -104,7 +136,7 @@ def model_fn(features, labels, mode, params):
     else:
         train_ops = optimizer.minimize(loss, global_step=global_step)
 
-    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_ops )
+    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_ops, training_hooks=[logging_hook])
 
 
 if __name__ == '__main__':

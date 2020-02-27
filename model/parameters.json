@@ -2,6 +2,7 @@
   "learning_rate": 1e-3,
   "batch_size": 64,
   "num_epochs": 20,
+  "total_steps": 100000,
 
   "num_channels": 32,
   "use_batch_norm": true,
@@ -18,5 +19,12 @@
   "eval_size": 10000,
 
   "num_parallel_calls": 4,
-  "save_summary_steps": 50
+  "save_summary_steps": 50,
+
+  "finetune": true,
+  "finetune_path": "D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints",
+  "save_checkpoints_secs": 600,
+  "checkpoints_max": 5,
+  "references_dir": "D:/Data/TrafficSigns/traffic_sign_ref",
+  "train_txt": "D:\\Data\\GTSRB\\Final_Training\\Images_jpg\\\\train.txt"
 }
