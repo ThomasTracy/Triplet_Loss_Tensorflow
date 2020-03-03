@@ -6,7 +6,7 @@ from model.triplet_loss import batch_all_center_triplet_loss
 from utils.train_utils import Params
 
 
-if __name__ == '__main__':
+def test_ckpt():
     params = Params('model/parameters.json')
     with tf.variable_scope('model'):
         model = build_model(params)
@@ -29,7 +29,7 @@ if __name__ == '__main__':
         predict_labels = tf.argmin(distance, axis=1)
         true_labels = labels[:params.batch_size]
 
-        acc = tf.equal(tf.cast(predict_labels,tf.float32),
+        acc = tf.equal(tf.cast(predict_labels, tf.float32),
                        tf.cast(true_labels, tf.float32))
         # acc = tf.cast(acc, tf.float32)
         # acc = tf.reduce_sum(acc) / params.batch_size
@@ -37,3 +37,36 @@ if __name__ == '__main__':
         print(sess.run([predict_labels, true_labels]))
         # print(sess.run(true_labels))
         print(sess.run(acc))
+
+
+def test_pb():
+    params = Params('model/parameters.json')
+    frozen_graph_path = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph\\frozen_inference_graph.pb'
+    model_graph = tf.Graph()
+    image, labels = train_input_fn(params)
+    # image = tf.convert_to_tensor(image)
+
+    with model_graph.as_default():
+        od_graph_def = tf.GraphDef()
+        with tf.gfile.GFile(frozen_graph_path, 'rb') as f:
+            serialized_graph = f.read()
+            od_graph_def.ParseFromString(serialized_graph)
+            tf.import_graph_def(od_graph_def, name='')
+
+    with model_graph.as_default():
+        with tf.Session(graph=model_graph) as sess:
+            inputs = model_graph.get_tensor_by_name('image_input:0')
+            outputs = model_graph.get_tensor_by_name('classes:0')
+            # [image, labels] = sess.run(image, labels)
+            # _, distance = batch_all_center_triplet_loss(outputs, labels, params)
+            # predict_labels = tf.argmin(distance, axis=1)
+            # result = sess.run(predict_labels, feed_dict={inputs:image})
+            result = sess.run(outputs, feed_dict={inputs:image.eval()})
+            print(result)
+
+
+
+
+
+if __name__ == '__main__':
+    test_pb()

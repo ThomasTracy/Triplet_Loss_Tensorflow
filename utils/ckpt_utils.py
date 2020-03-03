@@ -18,4 +18,4 @@ def display_model(ckpt_path):
             #         print(var)
 
 if __name__ == '__main__':
-    display_model('D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints/best/model.ckpt-3933')
+    display_model('D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints/frozen_graph/model.ckpt')
