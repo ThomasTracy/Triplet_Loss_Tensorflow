@@ -1,8 +1,10 @@
 {
   "learning_rate": 1e-3,
-  "batch_size": 64,
+  "batch_size": 100,
+  "test_batch_size": 1,
   "num_epochs": 20,
   "total_steps": 100000,
+  "references_num": 51,
 
   "num_channels": 32,
   "use_batch_norm": true,
@@ -16,7 +18,7 @@
   "image_channel": 3,
   "num_labels": 10,
   "train_size": 50000,
-  "eval_size": 10000,
+  "eval_size": 100,
 
   "num_parallel_calls": 4,
   "save_summary_steps": 50,

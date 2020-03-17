@@ -102,6 +102,51 @@ def train_input_fn(params):
     return imgs, lbls
 
 
+def input_fn(params):
+    # Return is not Dataset class
+    # instead is image, label
+    # the last 51-dims of batch-dim are references
+    images, labels = load_traffic_signs(params.train_txt)
+
+    dataset = tf.data.Dataset.from_tensor_slices((images, labels))
+    dataset = dataset.shuffle(params.train_size, reshuffle_each_iteration=True)
+    dataset = dataset.map(preprocess)
+    dataset = dataset.batch(params.batch_size, drop_remainder=True) # Make sure all batch are 64, divided evenly
+    dataset = dataset.repeat(3)
+    dataset = dataset.prefetch(1)
+
+
+    iterator = dataset.make_one_shot_iterator()
+    imgs, lbls = iterator.get_next()
+
+    return imgs, lbls
+
+
+def test_input_fn(image, params):
+    # Input test image is a single cv2 image
+    if isinstance(image, list):
+        # input_size = len(images)
+        images = list(map(lambda x:tf.convert_to_tensor(x), image))
+        images = list(map(lambda x:tf.cast(x, tf.float32), images))
+        images = list(map(lambda x:tf.expand_dims(x, axis=0), images))
+        images = tf.concat(images, axis=0)
+        # image = tf.convert_to_tensor(image)
+        # image = tf.cast(image, tf.float32)
+        # image = tf.expand_dims(image, axis=0)
+    else:
+        images = tf.convert_to_tensor(image)
+        images = tf.cast(images, tf.float32)
+        if len(images.shape) == 3:
+            images = tf.expand_dims(images, axis=0)
+
+    dataset_ref = build_ref_dataset(params.references_dir)
+    iterator_ref = dataset_ref.make_one_shot_iterator()
+    img_ref, _ = iterator_ref.get_next()
+    input_images = tf.concat([images, img_ref], axis=0)
+
+    return input_images
+
+
 def show_dataset(img, label):
     """
     Use class Iterator to get each

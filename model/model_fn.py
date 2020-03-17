@@ -78,7 +78,7 @@ def model_fn(features, labels, mode, params):
     #           Define loss and predictions
     # --------------------------------------------
     if params.triplet_strategy == 'batch_all':
-        loss, distance = batch_all_center_triplet_loss(features, labels, params)
+        loss, distance = batch_all_center_triplet_loss(params, features, labels)
         # loss, frac = batch_all_triplet_loss(features, labels, params.margin, params.squared)
     elif params.triplet_strategy == 'batch_hard':
         loss = batch_hard_triplet_loss(features, labels, params.margin, params.squared)
@@ -120,6 +120,7 @@ def model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.PREDICT:
         # predictions = {'features': features}
         predictions = {
+            'embeddings': features,
             'predict_labels': predict_label
         }
         return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)

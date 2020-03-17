@@ -4,23 +4,6 @@ import numpy as np
 from utils.train_utils import Params
 
 
-feature = tf.constant([[1,2,3],
-                       [4,5,6],
-                       [7,8,9],
-                       [10,11,12]], dtype=tf.float32)
-
-print(feature.shape)
-dot_product = tf.matmul(feature, tf.transpose(feature))
-square_norm = tf.diag_part(dot_product)
-
-distance = tf.expand_dims(square_norm, 1) - 2.0 * dot_product + tf.expand_dims(square_norm, 0)
-#
-# with tf.Session() as sess:
-#     print(sess.run(tf.expand_dims(square_norm, 0)))
-#     print('dot product:', sess.run(dot_product))
-#     print('square norm:', sess.run(square_norm))
-#     print('distance:', sess.run(distance))
-
 def _pairwise_distance(features, squared=False):
     '''
 
@@ -180,53 +163,55 @@ def batch_hard_triplet_loss(features, labels, margin, squared):
     return hard_triplet_loss
 
 
-def batch_all_center_triplet_loss(images, labels, params):
+def batch_all_center_triplet_loss(params, images, labels=None):
 
     '''
     images, labels: (batch, size, size, channel), the last 51 batches are references
     '''
 
-    # Split references from whole batch
-    images_input = images[:params.batch_size]
-    labels_input = labels[:params.batch_size]
-    images_ref = images[params.batch_size:]
-    labels_ref = labels[params.batch_size:]
+    if labels is not None:
+        # Split references from whole batch
+        images_input = images[:params.batch_size]
+        labels_input = labels[:params.batch_size]
+        images_ref = images[params.batch_size:]
+        labels_ref = labels[params.batch_size:]
 
-    # distance: (batch_input, batch_refrences) -- (64,51)
-    distance = _pairwise_distance_with_ref(images_input, images_ref)
+        # distance: (batch_input, batch_refrences) -- (64,51)
+        distance = _pairwise_distance_with_ref(images_input, images_ref)
 
-    # mask_positive_center: where input_label == reference_label
-    mask_positive_center = tf.equal(
-        tf.expand_dims(labels_input, axis=1),
-        tf.expand_dims(labels_ref, axis=0)
-    )
-    mask_positive_center = tf.cast(mask_positive_center, tf.float32)
-    mask_negative_center = 1.0 - mask_positive_center
+        # mask_positive_center: where input_label == reference_label
+        mask_positive_center = tf.equal(
+            tf.expand_dims(labels_input, axis=1),
+            tf.expand_dims(labels_ref, axis=0)
+        )
+        mask_positive_center = tf.cast(mask_positive_center, tf.float32)
+        mask_negative_center = 1.0 - mask_positive_center
 
-    #                 ref1            ref2            ref3
-    # label1      dis_positive   dis_negative     dis_negative
-    # label3      dis_negative    dis_negative    dis_positive
-    positive_center_distance = tf.multiply(distance, mask_positive_center)
-    # Positive distance minus all negative distance
-    # reduce positive distance metrics to vector, then expand to metrics, then boardcasting
-    positive_center_distance = tf.reduce_max(positive_center_distance, axis=1)
-    positive_center_distance = tf.expand_dims(positive_center_distance, axis=1)
-    negative_center_distance = tf.multiply(distance, mask_negative_center)
+        #                 ref1            ref2            ref3
+        # label1      dis_positive   dis_negative     dis_negative
+        # label3      dis_negative    dis_negative    dis_positive
+        positive_center_distance = tf.multiply(distance, mask_positive_center)
+        # Positive distance minus all negative distance
+        # reduce positive distance metrics to vector, then expand to metrics, then boardcasting
+        positive_center_distance = tf.reduce_max(positive_center_distance, axis=1)
+        positive_center_distance = tf.expand_dims(positive_center_distance, axis=1)
+        negative_center_distance = tf.multiply(distance, mask_negative_center)
 
-    # positive distance don't minus itself, keep unchanged as center loss
-    # loss = triplet_loss + center_loss
-    loss = positive_center_distance + params.margin*mask_negative_center  - negative_center_distance
-    loss = tf.maximum(loss, 0.0)
-    loss = tf.reduce_mean(loss)
-    #
-    # with tf.Session() as sess:
-    #     print(sess.run(distance))
-    #     print(sess.run(positive_center_distance))
-    #     print(sess.run(negative_center_distance))
-    #     print(sess.run(loss))
+        # positive distance don't minus itself, keep unchanged as center loss
+        # loss = triplet_loss + center_loss
+        loss = positive_center_distance + params.margin*mask_negative_center  - negative_center_distance
+        loss = tf.maximum(loss, 0.0)
+        loss = tf.reduce_mean(loss)
 
-    return loss, distance
+        return loss, distance
 
+    # Prediction mode, dont need labels
+    else:
+        images_input = images[:-params.references_num]
+        images_ref = images[-params.references_num:]
+        distance = _pairwise_distance_with_ref(images_input, images_ref)
+
+        return distance
 
 
 if __name__ == '__main__':
@@ -238,6 +223,6 @@ if __name__ == '__main__':
                           [3., 2., 5.]
                           ])
     labels = tf.constant([2,1,2,1,2])
-    loss, distance = batch_all_center_triplet_loss(images, labels, params)
+    distance = batch_all_center_triplet_loss(params, images)
     with tf.Session() as sess:
-        print(sess.run(loss), sess.run(distance))
+        print(sess.run(distance))

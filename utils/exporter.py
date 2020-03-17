@@ -7,6 +7,7 @@ import os
 
 from model.model_fn import build_model
 from utils.train_utils import Params
+from model.triplet_loss import batch_all_center_triplet_loss
 
 from tensorflow.python.training import saver as saver_lib
 from tensorflow.python.framework import graph_util
@@ -14,6 +15,8 @@ from tensorflow.python.platform import gfile
 from tensorflow.python.saved_model import signature_constants
 
 slim = tf.contrib.slim
+
+REFERENCE_SIZE = 51
 
 def _image_tensor_input_placeholder(input_shape=None):
     if input_shape is None:
@@ -51,17 +54,25 @@ def _add_output_tensor_nodes(postprocessed_tensors,
     return outputs
 
 
-def _get_outputs_from_inputs(input_tensor, model, output_collection_name):
+def _get_outputs_from_inputs(input_tensor, model, output_collection_name, params):
+    # params = Params('../model/parameters.json')
+
     inputs = tf.to_float(input_tensor)
     outputs = model(inputs)
+    # batch_size = inputs.shape[0]
+    # batch_size = batch_size - REFERENCE_SIZE
+    # images_input = inputs[:batch_size]
+    # images_ref = inputs[batch_size:]
+    outputs = batch_all_center_triplet_loss(params, outputs)
+    outputs = tf.argmin(outputs, axis=1)
     postprecessed_outputs = {'classes': outputs}
 
     return _add_output_tensor_nodes(postprecessed_outputs, output_collection_name)
 
 
-def _build_model_graph(model, input_shape, output_collection_name):
+def _build_model_graph(model, input_shape, output_collection_name, params):
     placeholder_tensor, input_tensor = _image_tensor_input_placeholder(input_shape)
-    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name)
+    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name, params)
 
     slim.get_or_create_global_step()
 
@@ -168,6 +179,7 @@ def write_saved_model(saved_model_path,
 def export_inference_graph(model,
                            trained_checkpoint_prefix,
                            output_dictionary,
+                           params,
                            input_shape=None,
                            output_collection_name='inference_op'):
     """Exports inference graph for the desired graph.
@@ -188,7 +200,7 @@ def export_inference_graph(model,
     save_model_path = os.path.join(output_dictionary, 'saved_model')
     model_path = os.path.join(output_dictionary, 'model.ckpt')
 
-    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name)
+    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name, params)
 
     saver = tf.train.Saver()
     input_saver_def = saver.as_saver_def()
@@ -218,12 +230,13 @@ def export_inference_graph(model,
 
 if __name__ == '__main__':
     trained_checkpoint_prefix = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\model.ckpt-3933'
-    output_dictionary = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph'
+    output_dictionary = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full'
     params = Params('../model/parameters.json')
     with tf.variable_scope('model'):
         model = build_model(params)
-    input_shape = [params.batch_size, params.image_size, params.image_size, 3]
+    input_shape = [None, params.image_size, params.image_size, 3]
     export_inference_graph(model,
                            trained_checkpoint_prefix,
                            output_dictionary,
+                           params,
                            input_shape)
