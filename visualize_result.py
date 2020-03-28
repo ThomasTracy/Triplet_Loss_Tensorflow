@@ -80,7 +80,7 @@ def visualize_results():
 def create_sprite_image(images):
     """Returns a sprite image consisting of images passed as argument. Images should be count x width x height"""
 
-    sprite_path = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/data/sprite_100.png'
+    sprite_path = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/logging/sprite_100.png'
     if isinstance(images, list):
         images = np.array(images)
     img_h = images.shape[1]
@@ -108,7 +108,7 @@ def create_sprite_image(images):
 
 def create_meta_file(labels):
 
-    labels_path = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/data/labels_100.tsv'
+    labels_path = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/logging/labels_100.tsv'
 
     with open(labels_path, 'w') as f:
         f.write("Index\tLabel\n")
@@ -118,7 +118,7 @@ def create_meta_file(labels):
 
 def write_sprite_images():
 
-    log_dir = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/data'
+    log_dir = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/logging'
     sprite_dir = 'sprite_100.png'
     labels_file = "labels_100.tsv"
 

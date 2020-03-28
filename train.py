@@ -14,6 +14,8 @@ parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
 parser.add_argument('--checkpoints', default='D:\Pycharm\Projects\Triplet-Loss-Tensorflow\checkpoints',
                     help="Directory containing the checkpoints")
+parser.add_argument('--finetune_path', default="D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints",
+                    help="Directory containing the pretrained models for warm startup")
 
 if __name__ == '__main__':
     tf.reset_default_graph()
@@ -35,15 +37,23 @@ if __name__ == '__main__':
     config = tf.estimator.RunConfig(
         session_config=session_config,
         tf_random_seed=521,
-        model_dir=args.checkpoints,
+        model_dir=args.checkpoints,     # 此处若设置model_dir 则每次重启训练会自动从中读取ckpt
         save_checkpoints_secs=params.save_checkpoints_secs,
         save_summary_steps=params.save_summary_steps,
         keep_checkpoint_max=params.checkpoints_max
     )
-    ws = tf.estimator.WarmStartSettings(ckpt_to_initialize_from=params.finetune_path)
+
+    # if os.path.exists(args.finetune_path):
+    #     ws = tf.estimator.WarmStartSettings(ckpt_to_initialize_from=args.finetune_path)
+    # else:
+    #     ws = None
+    # ws = tf.estimator.WarmStartSettings(ckpt_to_initialize_from=args.finetune_path,
+    #                                     vars_to_warm_start=['model'])
+
     estimator = tf.estimator.Estimator(model_fn=model_fn,
-                                       params=params, config=config,
-                                       warm_start_from=ws)
+                                       params=params,
+                                       config=config)
+                                       # warm_start_from=ws)
     train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(params),
                                         max_steps=params.total_steps)
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda: train_input_fn(params),

@@ -21,12 +21,15 @@
   "eval_size": 100,
 
   "num_parallel_calls": 4,
-  "save_summary_steps": 50,
+  "save_summary_steps": 10,
 
-  "finetune": true,
+  "model_dir": "D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints",
+  "finetune": false,
   "finetune_path": "D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints",
-  "save_checkpoints_secs": 600,
+  "save_checkpoints_secs": 10,
   "checkpoints_max": 5,
   "references_dir": "D:/Data/TrafficSigns/traffic_sign_ref",
-  "train_txt": "D:\\Data\\GTSRB\\Final_Training\\Images_jpg\\\\train.txt"
+  "train_txt": "D:\\Data\\GTSRB\\Final_Training\\Images_jpg\\train.txt",
+  "meta_file": "D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints/metafile.tsv",
+  "sprite_path": "D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints/sprite_img.png"
 }
