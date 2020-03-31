@@ -77,6 +77,25 @@ def build_ref_dataset(ref_dir):
     return dataset_ref
 
 
+def build_ref_dataset_customized(params):
+    # Build reference dataset without using Dataset
+    images = []
+    labels = []
+    ref_list = os.listdir(params.references_dir)
+    ref_list.sort(key=lambda x: int(x.split('.')[0]))
+    for ref in ref_list:
+        if ref.endswith('.jpg'):
+            label = ref.strip().split('.')[0]
+            labels.append(int(label))
+            image = os.path.join(params.references_dir, ref)
+            images.append(image)
+    images = list(map(lambda x:load_img(x), images))
+    images = tf.reshape(images, [-1, params.image_size, params.image_size, params.image_channel])
+    labels = tf.reshape(labels, [-1])
+
+    return images, labels
+
+
 def train_input_fn(params):
     # Return is not Dataset class
     # instead is image, label
@@ -100,6 +119,38 @@ def train_input_fn(params):
     lbls = tf.concat([lbls, lbl_ref], axis=0)
 
     return imgs, lbls
+
+
+def choose_image_from_one_class(dir):
+    image_list = os.listdir(dir)
+    chosen_image = numpy.random.choice(image_list, 1)
+    return os.path.join(dir, chosen_image[0])
+
+
+def train_input_fn_customized(params):
+    # This function allow choosing training data according to the class
+    # which means the data of different classes will be chosen equally
+    dataset_ref = build_ref_dataset(params.references_dir)
+    iterator_ref = dataset_ref.make_one_shot_iterator()
+    img_ref, lbl_ref = iterator_ref.get_next()
+
+    class_list = [cls for cls in os.listdir(params.train_data_path)
+                  if os.path.isdir(os.path.join(params.train_data_path,cls))]
+    # randomly choose batch_size classes from all classes
+    # replace=True, classes can be randomly chosen
+    chosen_classes = numpy.random.choice(class_list, params.batch_size,replace=True)
+    chosen_imgs_dir = list(map(lambda x:os.path.join(params.train_data_path,x), chosen_classes))
+    # choose one image from every chosen class
+    chosen_image_path = list(map(lambda x:choose_image_from_one_class(x), chosen_imgs_dir))
+    chosen_labels = list(map(int, chosen_classes))
+    images = list(map(load_img,chosen_image_path))
+    images = tf.reshape(images, [-1, params.image_size, params.image_size, params.image_channel])
+    labels = tf.reshape(chosen_labels, [-1])
+
+    images = tf.concat([images, img_ref], axis=0)
+    labels = tf.concat([labels, lbl_ref], axis=0)
+
+    return images, labels
 
 
 def input_fn(params):
@@ -139,9 +190,9 @@ def test_input_fn(image, params):
         if len(images.shape) == 3:
             images = tf.expand_dims(images, axis=0)
 
-    dataset_ref = build_ref_dataset(params.references_dir)
-    iterator_ref = dataset_ref.make_one_shot_iterator()
-    img_ref, _ = iterator_ref.get_next()
+    # dataset_ref = build_ref_dataset(params.references_dir)
+    # iterator_ref = dataset_ref.make_one_shot_iterator()
+    img_ref, _ = build_ref_dataset_customized(params)
     input_images = tf.concat([images, img_ref], axis=0)
 
     return input_images
@@ -168,10 +219,12 @@ def show_dataset(img, label):
 
 
 if __name__ == '__main__':
-    params = Params('../model/parameters.json')
-    imgs, labels = build_dataset(params)
 
-    show_dataset(imgs, labels)
+    params = Params('../model/parameters.json')
+    images, labels = train_input_fn_customized(params)
+    # imgs, labels = build_dataset(params)
+
+    show_dataset(images, labels)
 
 
     # iterator = dataset.make_one_shot_iterator()

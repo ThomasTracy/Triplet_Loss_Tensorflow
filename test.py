@@ -59,6 +59,7 @@ def test_pb(input_image,
     with model_graph.as_default():
         # input_image_ = tf.identity(input_image)
         od_graph_def = tf.GraphDef()
+
         image_input= test_input_fn(input_image, params)
         with tf.gfile.GFile(frozen_graph_path, 'rb') as f:
             serialized_graph = f.read()

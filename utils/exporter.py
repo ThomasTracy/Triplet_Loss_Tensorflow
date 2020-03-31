@@ -54,7 +54,17 @@ def _add_output_tensor_nodes(postprocessed_tensors,
     return outputs
 
 
-def _get_outputs_from_inputs(input_tensor, model, output_collection_name, params):
+def _get_outputs_from_inputs(input_tensor, model, output_collection_name, params, output_classes=True):
+    '''
+
+    :param input_tensor:
+    :param model:
+    :param output_collection_name:
+    :param params:
+    :param output_classes: if True the output will be classes
+                            else will be embeddings of each input
+    :return:
+    '''
     # params = Params('../model/parameters.json')
 
     inputs = tf.to_float(input_tensor)
@@ -63,16 +73,17 @@ def _get_outputs_from_inputs(input_tensor, model, output_collection_name, params
     # batch_size = batch_size - REFERENCE_SIZE
     # images_input = inputs[:batch_size]
     # images_ref = inputs[batch_size:]
-    outputs = batch_all_center_triplet_loss(params, outputs)
-    outputs = tf.argmin(outputs, axis=1)
+    if output_classes:
+        outputs = batch_all_center_triplet_loss(params, outputs)
+        outputs = tf.argmin(outputs, axis=1)
     postprecessed_outputs = {'classes': outputs}
 
     return _add_output_tensor_nodes(postprecessed_outputs, output_collection_name)
 
 
-def _build_model_graph(model, input_shape, output_collection_name, params):
+def _build_model_graph(model, input_shape, output_collection_name, params, output_classes):
     placeholder_tensor, input_tensor = _image_tensor_input_placeholder(input_shape)
-    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name, params)
+    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name, params, output_classes)
 
     slim.get_or_create_global_step()
 
@@ -103,7 +114,7 @@ def freeze_graph_with_def_protos(
         filename_tensor_name,
         clear_devices,
         initializer_nodes,
-        variable_names_blacklist=''):
+        variable_names_blacklist='projector_embeddings'):
     if not saver_lib.checkpoint_exists(input_checkpoint):
         raise ValueError("Checkpoint {} doesnt exist".format(input_checkpoint))
     if not output_node_names:
@@ -181,7 +192,8 @@ def export_inference_graph(model,
                            output_dictionary,
                            params,
                            input_shape=None,
-                           output_collection_name='inference_op'):
+                           output_collection_name='inference_op',
+                           output_classes=True):
     """Exports inference graph for the desired graph.
 
         Args:
@@ -192,6 +204,7 @@ def export_inference_graph(model,
                 specified, will default to [None, None, None, 3].
             output_collection_name: Name of collection to add output tensors to.
                 If None, does not add output tensors to a collection.
+                output_classes: whether to outpput predicted classes or only embeddings
         """
     if not os.path.exists(output_dictionary):
         os.mkdir(output_dictionary)
@@ -200,7 +213,7 @@ def export_inference_graph(model,
     save_model_path = os.path.join(output_dictionary, 'saved_model')
     model_path = os.path.join(output_dictionary, 'model.ckpt')
 
-    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name, params)
+    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name, params, output_classes)
 
     saver = tf.train.Saver()
     input_saver_def = saver.as_saver_def()
@@ -229,7 +242,7 @@ def export_inference_graph(model,
 
 
 if __name__ == '__main__':
-    trained_checkpoint_prefix = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\model.ckpt-3933'
+    trained_checkpoint_prefix = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\model.ckpt-5247'
     output_dictionary = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full'
     params = Params('../model/parameters.json')
     with tf.variable_scope('model'):
@@ -239,4 +252,5 @@ if __name__ == '__main__':
                            trained_checkpoint_prefix,
                            output_dictionary,
                            params,
-                           input_shape)
+                           input_shape,
+                           output_classes=False)

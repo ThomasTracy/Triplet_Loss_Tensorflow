@@ -30,18 +30,21 @@ def visualize_results():
     meta_file = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/logging/labels_100.tsv'
     log_dir = 'D:/Pycharm/Projects/Triplet-Loss-Tensorflow/logging'
     params = Params('model/parameters.json')
-
+    params.batch_size = 1000
 
     images, labels = train_input_fn(params)
     with tf.Session() as sess:
         images, labels = sess.run([images, labels])
+    final_result = test_pb(images,
+                           frozen_graph_path='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full\\frozen_inference_graph.pb')
+    tf.Print(tf.as_string(final_result),
+                        [tf.as_string(final_result)],
+                        message='result',
+                        name='result')
+
     create_sprite_image(images)
     create_meta_file(labels)
-
-    final_result = test_pb(images,
-                           frozen_graph_path='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph\\frozen_inference_graph.pb')
-
-    y = tf.Variable(final_result, name='embedding')
+    y = tf.Variable(final_result, name='projector_embeddings')
     summary_writer = tf.summary.FileWriter(log_dir)
 
     # 通过project.ProjectorConfig类来帮助生成日志文件
@@ -74,7 +77,7 @@ def visualize_results():
     saver = tf.train.Saver()
     saver.save(sess, os.path.join(log_dir, "model.ckpt"), 1)
 
-    summary_writer.close()
+    # summary_writer.close()
 
 
 def create_sprite_image(images):

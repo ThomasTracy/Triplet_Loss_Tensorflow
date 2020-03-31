@@ -153,7 +153,7 @@ class ProjectorSaverHook(tf.train.SessionRunHook):
 
 
     def after_run(self, run_context, run_values):
-        if run_values.results[0] % 10 == 0:
+        if run_values.results[0] % 100 == 0:
             create_sprite_image(run_values.results[1],
                                 os.path.join(self.path, 'sprite_img.png'))
             create_meta_file(run_values.results[2],

@@ -64,7 +64,7 @@ def model_fn(features, labels, mode, params):
         if params.finetune:
             if tf.gfile.IsDirectory(params.finetune_path):
                 ckpt_path = tf.train.latest_checkpoint(params.finetune_path)
-                variables_to_restore = tf.contrib.slim.get_variables_to_restore()
+                variables_to_restore = tf.contrib.slim.get_variables_to_restore(exclude=['projector_embeddings'])
                 tf.train.init_from_checkpoint(ckpt_path,
                                               # {'/':'model/'})
                                               {v.name.split(':')[0]: v for v in variables_to_restore})
@@ -161,8 +161,8 @@ def model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metrics_ops)
 
-    # optimizer = tf.train.AdamOptimizer(params.learning_rate)
-    optimizer = tf.train.RMSPropOptimizer(params.learning_rate)
+    optimizer = tf.train.AdamOptimizer(params.learning_rate)
+    # optimizer = tf.train.RMSPropOptimizer(params.learning_rate)
     global_step = tf.train.get_or_create_global_step()
     print("Now global_step is:", global_step)
     if params.use_batch_norm:

@@ -3,7 +3,7 @@ import os
 import tensorflow as tf
 
 from model.model_fn import model_fn
-from model.input_fn import train_input_fn
+from model.input_fn import train_input_fn, train_input_fn_customized
 from utils.train_utils import Params
 
 
@@ -12,7 +12,7 @@ parser.add_argument('--model_dir', default='D:\Pycharm\Projects\Triplet-Loss-Ten
                     help="Experiment directory containing params.json")
 parser.add_argument('--data_dir', default='data/mnist',
                     help="Directory containing the dataset")
-parser.add_argument('--checkpoints', default='D:\Pycharm\Projects\Triplet-Loss-Tensorflow\checkpoints',
+parser.add_argument('--checkpoints', default='D:\Pycharm\Projects\Triplet-Loss-Tensorflow\checkpoints\\checkpoint_RMS',
                     help="Directory containing the checkpoints")
 parser.add_argument('--finetune_path', default="D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints",
                     help="Directory containing the pretrained models for warm startup")
@@ -54,7 +54,7 @@ if __name__ == '__main__':
                                        params=params,
                                        config=config)
                                        # warm_start_from=ws)
-    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn(params),
+    train_spec = tf.estimator.TrainSpec(input_fn=lambda: train_input_fn_customized(params),
                                         max_steps=params.total_steps)
     eval_spec = tf.estimator.EvalSpec(input_fn=lambda: train_input_fn(params),
                                       steps=None,
