@@ -9,7 +9,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from tensorflow.contrib.tensorboard.plugins import projector
 
-from model.input_fn import test_input_fn, input_fn, train_input_fn
+from model.input_fn import test_input_fn, input_fn, train_input_fn, train_input_fn_customized
 from model.model_fn import model_fn
 from test import test_pb
 
@@ -35,16 +35,16 @@ def visualize_results():
     images, labels = train_input_fn(params)
     with tf.Session() as sess:
         images, labels = sess.run([images, labels])
-    final_result = test_pb(images,
-                           frozen_graph_path='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full\\frozen_inference_graph.pb')
-    tf.Print(tf.as_string(final_result),
-                        [tf.as_string(final_result)],
-                        message='result',
-                        name='result')
+    embeddings, _ = test_pb(images,
+                           frozen_graph_path='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\with_data_augumentation\\frozen_graph_full\\frozen_inference_graph.pb')
+    # tf.Print(tf.as_string(embeddings),
+    #                     [tf.as_string(embeddings)],
+    #                     message='result',
+    #                     name='result')
 
     create_sprite_image(images)
     create_meta_file(labels)
-    y = tf.Variable(final_result, name='projector_embeddings')
+    y = tf.Variable(embeddings, name='projector_embeddings')
     summary_writer = tf.summary.FileWriter(log_dir)
 
     # 通过project.ProjectorConfig类来帮助生成日志文件

@@ -44,7 +44,7 @@ def test_ckpt():
 
 
 def test_pb(input_image,
-            frozen_graph_path='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full\\frozen_inference_graph.pb'):
+            frozen_graph_path='D:\\Pycharm\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\with_data_augumentation\\frozen_graph_full\\frozen_inference_graph.pb'):
     params = Params('model/parameters.json')
     frozen_graph_path = frozen_graph_path
     model_graph = tf.Graph()
@@ -69,29 +69,28 @@ def test_pb(input_image,
     with model_graph.as_default():
         with tf.Session(graph=model_graph) as sess:
             inputs = model_graph.get_tensor_by_name('image_input:0')
-            outputs = model_graph.get_tensor_by_name('classes:0')
+            classes = model_graph.get_tensor_by_name('classes:0')
+            embeddings = model_graph.get_tensor_by_name('embeddings:0')
             image_input = sess.run(image_input)
 
-            result = sess.run(outputs, feed_dict={inputs:image_input})
+            embeddings, classes = sess.run([embeddings, classes], feed_dict={inputs:image_input})
             # distance = batch_all_center_triplet_loss(params, outputs)
             # predict_labels = tf.argmin(distance, axis=1)
             # result, outputs = sess.run([predict_labels,outputs], feed_dict={inputs:image_input})
             # np.savetxt('D:/Data/test_result/outputs1.txt', outputs, fmt='%f', delimiter=',')
             # result = sess.run(outputs, feed_dict={inputs:image})
-            print(result)
-            # print(labels)
-    return result
+    return embeddings, classes
 
 
 
 
 
 if __name__ == '__main__':
-    img = cv2.imread('D:/Data/TrafficSigns/test/1.png')
+    img = cv2.imread('D:\Data\TrafficSigns\\test_images\\traffic_sign_cropped\\30_0.jpg')
     img = cv2.resize(img, (64, 64))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img/255.0
-    result = test_pb(img)
+    _, result = test_pb(img)
     print(result)
 
     # x0 = 135.67654418945312

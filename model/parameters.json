@@ -23,7 +23,7 @@
   "num_parallel_calls": 4,
   "save_summary_steps": 2,
 
-  "model_dir": "D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints/checkpoint_RMS",
+  "model_dir": "D:/Pycharm/Projects/Triplet-Loss-Tensorflow/checkpoints",
   "finetune": false,
   "finetune_path": "D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints",
   "save_checkpoints_secs": 600,

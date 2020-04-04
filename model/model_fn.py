@@ -111,13 +111,13 @@ def model_fn(features, labels, mode, params):
     # summary_hook = tf.train.SummarySaverHook(save_steps=params.save_summary_steps,
     #                                          output_dir='D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\logs',
     #                                          scaffold=tf.train.Scaffold(summary_op=tf.summary.merge_all()))
-    projector_hook = ProjectorSaverHook(images, labels, embedding_assign)
+
     # -----------------------------------------
     #         Define metrics and summary
     # -----------------------------------------
     with tf.variable_scope('metrics'):
         eval_metrics_ops = {
-            'feature_mean_norm': tf.metrics.mean(features_mean_norm),
+            # 'feature_mean_norm': tf.metrics.mean(features_mean_norm),
             'accuracy': tf.metrics.accuracy(labels=labels_batch,
                                             predictions=predict_label, name='acc_op')
         }
@@ -138,13 +138,14 @@ def model_fn(features, labels, mode, params):
     tf.summary.image('train_image', images, max_outputs=1)
 
     # Summary for projector
-    config = projector.ProjectorConfig()
-    embedding = config.embeddings.add()
-    embedding.tensor_name = embedding_var.name
-    embedding.metadata_path = params.meta_file
-    embedding.sprite.image_path = params.sprite_path
-    embedding.sprite.single_image_dim.extend([64, 64])
-    projector.visualize_embeddings(tf.summary.FileWriter(params.model_dir), config)
+    # projector_hook = ProjectorSaverHook(images, labels, embedding_assign)
+    # config = projector.ProjectorConfig()
+    # embedding = config.embeddings.add()
+    # embedding.tensor_name = embedding_var.name
+    # embedding.metadata_path = params.meta_file
+    # embedding.sprite.image_path = params.sprite_path
+    # embedding.sprite.single_image_dim.extend([64, 64])
+    # projector.visualize_embeddings(tf.summary.FileWriter(params.model_dir), config)
 
     # -----------------------------------------
     # Define predict, eval, train EstimatorSpec
@@ -174,7 +175,7 @@ def model_fn(features, labels, mode, params):
 
     return tf.estimator.EstimatorSpec(mode, loss=loss,
                                       train_op=train_ops,
-                                      training_hooks=[logging_hook, projector_hook])
+                                      training_hooks=[logging_hook])
 
 
 if __name__ == '__main__':

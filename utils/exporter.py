@@ -47,7 +47,9 @@ def _add_output_tensor_nodes(postprocessed_tensors,
         """
     outputs = {}
     classes = postprocessed_tensors.get('classes')
+    embeddings = postprocessed_tensors.get('embeddings')
     outputs['classes'] = tf.identity(classes, name='classes')
+    outputs['embeddings'] = tf.identity(embeddings, name='embeddings')
     for key in outputs:
         tf.add_to_collection(output_collection_name, outputs[key])
 
@@ -68,22 +70,23 @@ def _get_outputs_from_inputs(input_tensor, model, output_collection_name, params
     # params = Params('../model/parameters.json')
 
     inputs = tf.to_float(input_tensor)
-    outputs = model(inputs)
+    embeddings = model(inputs)
     # batch_size = inputs.shape[0]
     # batch_size = batch_size - REFERENCE_SIZE
     # images_input = inputs[:batch_size]
     # images_ref = inputs[batch_size:]
-    if output_classes:
-        outputs = batch_all_center_triplet_loss(params, outputs)
-        outputs = tf.argmin(outputs, axis=1)
-    postprecessed_outputs = {'classes': outputs}
+    # if output_classes:
+    outputs = batch_all_center_triplet_loss(params, embeddings)
+    outputs = tf.argmin(outputs, axis=1)
+    postprecessed_outputs = {'classes': outputs,
+                             'embeddings': embeddings}
 
     return _add_output_tensor_nodes(postprecessed_outputs, output_collection_name)
 
 
-def _build_model_graph(model, input_shape, output_collection_name, params, output_classes):
+def _build_model_graph(model, input_shape, output_collection_name, params):
     placeholder_tensor, input_tensor = _image_tensor_input_placeholder(input_shape)
-    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name, params, output_classes)
+    outputs = _get_outputs_from_inputs(input_tensor, model, output_collection_name, params)
 
     slim.get_or_create_global_step()
 
@@ -192,8 +195,7 @@ def export_inference_graph(model,
                            output_dictionary,
                            params,
                            input_shape=None,
-                           output_collection_name='inference_op',
-                           output_classes=True):
+                           output_collection_name='inference_op'):
     """Exports inference graph for the desired graph.
 
         Args:
@@ -213,7 +215,7 @@ def export_inference_graph(model,
     save_model_path = os.path.join(output_dictionary, 'saved_model')
     model_path = os.path.join(output_dictionary, 'model.ckpt')
 
-    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name, params, output_classes)
+    outputs, placeholder_tensor = _build_model_graph(model, input_shape, output_collection_name, params)
 
     saver = tf.train.Saver()
     input_saver_def = saver.as_saver_def()
@@ -242,8 +244,8 @@ def export_inference_graph(model,
 
 
 if __name__ == '__main__':
-    trained_checkpoint_prefix = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\model.ckpt-5247'
-    output_dictionary = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\frozen_graph_full'
+    trained_checkpoint_prefix = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\with_data_augumentation\\model.ckpt-25942'
+    output_dictionary = 'D:\\Pycharm\\Projects\\Triplet-Loss-Tensorflow\\checkpoints\\with_data_augumentation\\frozen_graph_full'
     params = Params('../model/parameters.json')
     with tf.variable_scope('model'):
         model = build_model(params)
@@ -252,5 +254,4 @@ if __name__ == '__main__':
                            trained_checkpoint_prefix,
                            output_dictionary,
                            params,
-                           input_shape,
-                           output_classes=False)
+                           input_shape)

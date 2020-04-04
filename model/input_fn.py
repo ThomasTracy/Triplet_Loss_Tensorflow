@@ -1,6 +1,7 @@
 import tensorflow as tf
 import matplotlib.pyplot as plt
 import cv2
+import random
 import numpy
 import os
 
@@ -24,15 +25,30 @@ def load_traffic_signs(txt_path):
 
     return images, labels
 
+
+def pure_load(img_path, labels):
+    # load image without any preprocessing
+    img = tf.io.read_file(img_path)
+    img = tf.image.decode_jpeg(img, channels=3)
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    img = tf.image.resize(img, [64, 64])
+    return img, labels
+
+
 def load_img(img_path):
+    crop_scale = 0.8
     img = tf.io.read_file(img_path)
 
     # Turn image in 64x64x3
     img = tf.image.decode_jpeg(img, channels=3)
-
+    width, height = img.shape[0], img.shape[1]
+    # img = tf.random_crop(img, [width*crop_scale, height*crop_scale, 3])
     # Convert from (0,255) to (0,1)
     img = tf.image.convert_image_dtype(img, tf.float32)
-    return tf.image.resize(img, [IMG_SIZE, IMG_SIZE])
+    img = tf.image.resize(img, [80, 80])
+    img = tf.random_crop(img, [64, 64, 3])
+
+    return img
 
 def normalize(img):
 
@@ -44,14 +60,24 @@ def normalize(img):
     img_ = (img - img_mean)/img_std
     return img_
 
-def preprocess(image, label):
+def preprocess(image, label=None):
 
-
-    # labels = tf.cast(labels, tf.int32)
-    # labels = [int(l) for l in labels]
+    # randomly choosing a preprocessing method
+    funcs = [tf.image.random_brightness,
+             tf.image.random_contrast,
+             tf.image.random_hue,
+             tf.image.random_saturation]
+    args = [{'max_delta':0.1}, {'lower':0.3, 'upper':1.5},
+            {'max_delta':0.1}, {'lower':0.3, 'upper':1.8}]
+    choice = random.randint(0,len(funcs)-1)
     img = load_img(image)
+    img = funcs[choice](img,**args[choice])
+    img = tf.clip_by_value(img, 0.0, 1.0)
 
-    return img, label
+    if label:
+        return img, label
+    else:
+        return img
 
 
 def build_ref_dataset(ref_dir):
@@ -69,7 +95,7 @@ def build_ref_dataset(ref_dir):
     data_size = len(labels)
     dataset_ref = tf.data.Dataset.from_tensor_slices((images, labels))
     # dataset_ref = dataset_ref.shuffle(data_size)
-    dataset_ref = dataset_ref.map(preprocess)
+    dataset_ref = dataset_ref.map(pure_load)
     # hear repeat is important, otherwise it will end in 1 step
     dataset_ref = dataset_ref.repeat(99999)
     dataset_ref = dataset_ref.batch(data_size)
@@ -106,7 +132,7 @@ def train_input_fn(params):
     dataset = dataset.shuffle(params.train_size, reshuffle_each_iteration=True)
     dataset = dataset.map(preprocess)
     dataset = dataset.batch(params.batch_size, drop_remainder=True) # Make sure all batch are 64, divided evenly
-    dataset = dataset.repeat(3)
+    dataset = dataset.repeat(999)
     dataset = dataset.prefetch(1)
 
     dataset_ref = build_ref_dataset(params.references_dir)
@@ -143,7 +169,7 @@ def train_input_fn_customized(params):
     # choose one image from every chosen class
     chosen_image_path = list(map(lambda x:choose_image_from_one_class(x), chosen_imgs_dir))
     chosen_labels = list(map(int, chosen_classes))
-    images = list(map(load_img,chosen_image_path))
+    images = list(map(lambda x:preprocess(x),chosen_image_path))
     images = tf.reshape(images, [-1, params.image_size, params.image_size, params.image_channel])
     labels = tf.reshape(chosen_labels, [-1])
 
@@ -192,7 +218,9 @@ def test_input_fn(image, params):
 
     # dataset_ref = build_ref_dataset(params.references_dir)
     # iterator_ref = dataset_ref.make_one_shot_iterator()
-    img_ref, _ = build_ref_dataset_customized(params)
+    dataset_ref = build_ref_dataset(params.references_dir)
+    iterator_ref = dataset_ref.make_one_shot_iterator()
+    img_ref, _ = iterator_ref.get_next()
     input_images = tf.concat([images, img_ref], axis=0)
 
     return input_images
@@ -207,20 +235,20 @@ def show_dataset(img, label):
     with tf.Session() as sess:
         img, label = sess.run([img, label])
 
-    for i in range(115):
-        ax =plt.subplot(10,12,i+1)
+    for i in range(151):
+        ax =plt.subplot(13,13,i+1)
         ax.imshow(img[i])
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title(label[i])
 
     plt.show()
-    print(img.shape)
 
 
 if __name__ == '__main__':
 
     params = Params('../model/parameters.json')
+    # params.batch_size = 10
     images, labels = train_input_fn_customized(params)
     # imgs, labels = build_dataset(params)
 
